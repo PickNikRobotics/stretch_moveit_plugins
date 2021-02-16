@@ -7,10 +7,6 @@ namespace stretch_kinematics_plugin
 {
 static rclcpp::Logger LOGGER = rclcpp::get_logger("stretch_kinematics_plugin");
 
-StretchKinematicsPlugin::StretchKinematicsPlugin() : initialized_(false)
-{
-}
-
 bool StretchKinematicsPlugin::initialize(const rclcpp::Node::SharedPtr& node,
                                          const moveit::core::RobotModel& robot_model, const std::string& group_name,
                                          const std::string& base_frame, const std::vector<std::string>& tip_frames,
