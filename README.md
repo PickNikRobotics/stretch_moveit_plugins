@@ -4,7 +4,7 @@ Description: MoveIt 2 kinematics plugin for stretch robot from Hello Robot Inc.
 
 ### Setup
 
-To setup the kinematics plugin we need a joint model group that consist of two joint model groups one for the manipulator and the other one for the mobile base which have only one joint with planar type so the `*.srdf` file should have
+To setup the kinematics plugin we need a joint model group that consist of two joint model groups: one for the manipulator and the other one for the mobile base which has only one joint with planar type so the `*.srdf` file should have
 
 ```xml
 <group name="manipulator">
