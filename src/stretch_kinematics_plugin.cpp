@@ -223,9 +223,10 @@ bool StretchKinematicsPlugin::searchPositionIK(const geometry_msgs::msg::Pose& i
     // Convert the desired pose from the arm + mobile base solver base frame to the arm group base frame
     const auto arm_b_T_ik_pose = tf2::toMsg(state_->getGlobalLinkTransform(arm_ik_solver->getBaseFrame()).inverse() *
                                             state_->getGlobalLinkTransform(getBaseFrame()) * eigen_ik_pose);
-    const bool ik_valid = arm_ik_solver->searchPositionIK(arm_b_T_ik_pose, arm_jmg_ik_seed_state, timeout * 0.25,
-                                                          arm_jmg_consistency_limits, arm_jmg_solution,
-                                                          solution_callback, error_code, options);
+
+    const bool ik_valid =
+        arm_ik_solver->searchPositionIK(arm_b_T_ik_pose, arm_jmg_ik_seed_state, timeout * 0.5,
+                                        arm_jmg_consistency_limits, arm_jmg_solution, error_code, options);
     if (ik_valid || options.return_approximate_solution)  // found acceptable solution
     {
       std::copy(arm_jmg_solution.begin(), arm_jmg_solution.end(), solution.begin());
