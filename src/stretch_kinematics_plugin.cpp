@@ -221,8 +221,8 @@ bool StretchKinematicsPlugin::searchPositionIK(const geometry_msgs::msg::Pose& i
     state_->setJointGroupPositions(mobile_base_jmg_, &solution[mobile_base_index_]);
     state_->updateLinkTransforms();
     // Convert the desired pose from the arm + mobile base solver base frame to the arm group base frame
-    const auto arm_b_T_ik_pose = tf2::toMsg(state_->getGlobalLinkTransform(arm_ik_solver->getBaseFrame()).inverse() *
-                                            state_->getGlobalLinkTransform(getBaseFrame()) * eigen_ik_pose);
+    const auto arm_b_T_ik_pose = tf2::toMsg(state_->getFrameTransform(arm_ik_solver->getBaseFrame()).inverse() *
+                                            state_->getFrameTransform(getBaseFrame()) * eigen_ik_pose);
 
     const bool ik_valid =
         arm_ik_solver->searchPositionIK(arm_b_T_ik_pose, arm_jmg_ik_seed_state, timeout * 0.5,
@@ -252,8 +252,8 @@ bool StretchKinematicsPlugin::searchPositionIK(const geometry_msgs::msg::Pose& i
     state_->updateLinkTransforms();
     // The transformation for the tip frame w.r.t. the mobile base link given the arm's joint values
     const auto mobile_base_link_T_current =
-        state_->getGlobalLinkTransform(mobile_base_joint_->getChildLinkModel()).inverse() *
-        state_->getGlobalLinkTransform(getTipFrame());
+        state_->getFrameTransform(mobile_base_joint_->getChildLinkModel()->getName()).inverse() *
+        state_->getFrameTransform(getTipFrame());
     // The error for the mobile base link
     const auto T_mobile_base_link = eigen_ik_pose * mobile_base_link_T_current.inverse();
 
@@ -288,7 +288,7 @@ bool StretchKinematicsPlugin::getPositionFK(const std::vector<std::string>& link
 
   for (unsigned int i = 0; i < poses.size(); i++)
   {
-    poses[i] = tf2::toMsg(state_->getGlobalLinkTransform(link_names[i]));
+    poses[i] = tf2::toMsg(state_->getFrameTransform(link_names[i]));
   }
   return true;
 }
