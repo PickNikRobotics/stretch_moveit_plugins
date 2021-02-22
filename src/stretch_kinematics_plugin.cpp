@@ -224,21 +224,32 @@ bool StretchKinematicsPlugin::searchPositionIK(const geometry_msgs::msg::Pose& i
     const auto arm_b_T_ik_pose = tf2::toMsg(state_->getFrameTransform(arm_ik_solver->getBaseFrame()).inverse() *
                                             state_->getFrameTransform(getBaseFrame()) * eigen_ik_pose);
 
-    const bool ik_valid =
-        arm_ik_solver->searchPositionIK(arm_b_T_ik_pose, arm_jmg_ik_seed_state, timeout * 0.5,
-                                        arm_jmg_consistency_limits, arm_jmg_solution, error_code, options);
+    // We can't use the solution_callback directly with the IK solver for the arm since we'll only get the joint values
+    // for the arm and solution_callback meant to be used with the joint model group that contains both the arm & mobile
+    // base to fix this we create a callback that will append the solution for the mobile base to the arm's solution and
+    // call solution_callback
+    IKCallbackFn arm_solution_callback;
+    if (!solution_callback.empty())
+    {
+      arm_solution_callback = [&solution_callback, &solution = std::as_const(solution),
+                               mobile_base_index = this->mobile_base_index_](
+                                  const geometry_msgs::msg::Pose& ik_pose, const std::vector<double>& arm_solution,
+                                  moveit_msgs::msg::MoveItErrorCodes& error_code) {
+        std::vector<double> jmg_solution(arm_solution.cbegin(), arm_solution.cend());
+        // Combine arm's solution with mobile base's solution to call solution_callback
+        std::copy(std::next(solution.cbegin(), mobile_base_index), solution.cend(), std::back_inserter(jmg_solution));
+        solution_callback(ik_pose, jmg_solution, error_code);
+      };
+    }
+    const bool ik_valid = arm_ik_solver->searchPositionIK(arm_b_T_ik_pose, arm_jmg_ik_seed_state, timeout * 0.5,
+                                                          arm_jmg_consistency_limits, arm_jmg_solution,
+                                                          arm_solution_callback, error_code, options);
+
     if (ik_valid || options.return_approximate_solution)  // found acceptable solution
     {
       std::copy(arm_jmg_solution.begin(), arm_jmg_solution.end(), solution.begin());
-
-      if (!solution_callback.empty())
-      {
-        solution_callback(ik_pose, solution, error_code);
-        if (error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
-          continue;
-      }
-      // solution passed consistency check and solution callback
-      error_code.val = moveit_msgs::msg::MoveItErrorCodes::SUCCESS;
+      if (error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
+        continue;
       RCLCPP_DEBUG_STREAM(LOGGER, "Solved after " << (node_->now() - start_time).seconds() << " < " << timeout
                                                   << "s and " << attempt << " attempts");
       return true;
