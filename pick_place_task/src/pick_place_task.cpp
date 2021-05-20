@@ -210,7 +210,7 @@ PickPlaceTask::PickPlaceTask(const rclcpp::Node::SharedPtr &node,
 
       // Set downward direction
       geometry_msgs::msg::Vector3Stamped vec;
-      vec.header.frame_id = "map";
+      vec.header.frame_id = "odom";
       vec.vector.z = -1.0;
       stage->setDirection(vec);
       place->insert(std::move(stage));
