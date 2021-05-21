@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
   pick_place_parameters.hand_frame = "link_grasp_center";
   pick_place_parameters.object_name = "object";
   pick_place_parameters.hand_open_pose = "open";
-  pick_place_parameters.hand_close_pose = "close";
+  pick_place_parameters.hand_close_pose = "closed";
   pick_place_parameters.mobile_base_arm_group_name = "mobile_base_arm";
   pick_place_parameters.place_pose.header.frame_id = "odom";
   pick_place_parameters.place_pose.pose =

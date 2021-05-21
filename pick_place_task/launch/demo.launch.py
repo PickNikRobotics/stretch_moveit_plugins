@@ -5,7 +5,8 @@ from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
 from ament_index_python.packages import get_package_share_directory
 import xacro
-
+import argparse
+import sys
 
 def load_file(package_name, file_path):
     package_path = get_package_share_directory(package_name)
@@ -29,7 +30,48 @@ def load_yaml(package_name, file_path):
         return None
 
 
+# Mapping from entry in the stretch_body configuration to joints in the SRDF
+CONFIGURATION_TRANSLATION = {
+    'lift': ['lift'],
+    'wrist_yaw': ['wrist_yaw'],
+    'stretch_gripper': ['joint_gripper_finger_left', 'joint_gripper_finger_right'],
+    'base': ['position/x', 'position/theta'],
+    'arm': ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3']
+}
+
+def load_joint_limits_from_config(mode='default'):
+    """Translate the values from the robot configuration to params to be used by MoveIt."""
+    params = {'joint_limits': {}}
+    try:
+        from stretch_body.device import Device
+        d = Device()
+        for config_name, joint_names in CONFIGURATION_TRANSLATION.items():
+            config = d.robot_params[config_name]
+            config_limits = config['motion'].get(mode, {})
+            result = {}
+            for name, abrev in [('velocity', 'vel'), ('acceleration', 'accel')]:
+                cfg_name = f'{abrev}_m'
+                if cfg_name in config_limits:
+                    result[f'has_{name}_limits'] = True
+                    result[f'max_{name}'] = config_limits[cfg_name]
+                else:
+                    result[f'has_{name}_limits'] = False
+            for joint_name in joint_names:
+                params['joint_limits'][joint_name] = dict(result)
+    except (KeyError, ModuleNotFoundError):
+        # We may reach here if HELLO_FLEET_ID or HELLO_FLEET_PATH is not set
+        # or stretch_body.device is not on the PYTHONPATH
+        # in which case we load the defaults
+        print('Load from default')
+        return load_yaml('stretch_moveit_config', 'config/default_joint_limits.yaml')
+    return params
+
 def generate_launch_description():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use_fake_controller", default=False, type=eval, choices=[True, False])
+    args, _ = parser.parse_known_args([arg for sys_arg in sys.argv[4:] for arg in ('--' + sys_arg).split(':=')])
+
+    ld = LaunchDescription()
     # planning_context
     robot_description_config = xacro.process_file(
         os.path.join(
@@ -37,7 +79,7 @@ def generate_launch_description():
             "config",
             "stretch.xacro",
         ),
-        mappings={"use_fake_controller": "True"},
+        mappings={"use_fake_controller": str(args.use_fake_controller)},
     )
     robot_description = {"robot_description": robot_description_config.toxml()}
 
@@ -106,6 +148,8 @@ def generate_launch_description():
         ],
     )
 
+    ld.add_action(run_move_group_node)
+
     # RViz
     rviz_config_file = get_package_share_directory("pick_place_task") + "/rviz/mtc.rviz"
     rviz_node = Node(
@@ -122,64 +166,39 @@ def generate_launch_description():
         ],
     )
 
-    # TODO(JafarAbdi): We don't need this since the base is mobile
-    # Static TF
-    static_tf = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="static_transform_publisher",
-        output="log",
-        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "odom", "base_link"],
-    )
+    ld.add_action(rviz_node)
 
-    # Publish TF
-    robot_state_publisher = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        name="robot_state_publisher",
-        output="both",
-        parameters=[robot_description],
-    )
+    if args.use_fake_controller:
+        static_tf = Node(package='tf2_ros',
+                         executable='static_transform_publisher',
+                         name='static_transform_publisher',
+                         output='log',
+                         arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', 'odom', 'base_link'])
+        ld.add_action(static_tf)
 
-    # Fake joint driver
-    fake_joint_driver_node = Node(
-        package="controller_manager",
-        executable="ros2_control_node",
-        parameters=[
-            robot_description,
-            os.path.join(
-                get_package_share_directory("stretch_moveit_config"),
-                "config",
-                "ros_controllers.yaml",
-            ),
-        ],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        },
-    )
+        # Publish TF
+        robot_state_publisher = Node(package='robot_state_publisher',
+                                     executable='robot_state_publisher',
+                                     name='robot_state_publisher',
+                                     output='both',
+                                     parameters=[robot_description])
+        ld.add_action(robot_state_publisher)
 
-    # Load controllers
-    load_controllers = []
-    for controller in [
-        "stretch_arm_controller",
-        "gripper_controller",
-        "joint_state_controller",
-    ]:
-        load_controllers += [
-            ExecuteProcess(
-                cmd=["ros2 run controller_manager spawner.py {}".format(controller)],
-                shell=True,
-                output="screen",
+        # Fake joint driver
+        fake_joint_driver_node = Node(
+            package='controller_manager',
+            executable='ros2_control_node',
+            parameters=[robot_description,  os.path.join(get_package_share_directory("stretch_moveit_config"), "config", "ros_controllers.yaml")],
+        )
+        ld.add_action(fake_joint_driver_node)
+
+        for controller in ["stretch_controller", "joint_state_controller"]:
+            ld.add_action(
+                ExecuteProcess(
+                    cmd=["ros2 run controller_manager spawner.py {}".format(controller)],
+                    shell=True,
+                    output="screen",
+                )
             )
-        ]
-    return LaunchDescription(
-        [
-            rviz_node,
-            static_tf,
-            robot_state_publisher,
-            run_move_group_node,
-            fake_joint_driver_node,
-        ]
-        + load_controllers
-    )
+
+    return ld
