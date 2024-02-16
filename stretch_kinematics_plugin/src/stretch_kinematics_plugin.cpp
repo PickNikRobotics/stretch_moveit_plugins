@@ -229,7 +229,7 @@ bool StretchKinematicsPlugin::searchPositionIK(const geometry_msgs::msg::Pose& i
     // base to fix this we create a callback that will append the solution for the mobile base to the arm's solution and
     // call solution_callback
     IKCallbackFn arm_solution_callback;
-    if (!solution_callback.empty())
+    if (solution_callback)
     {
       arm_solution_callback = [&solution_callback, &solution = std::as_const(solution),
                                mobile_base_index = this->mobile_base_index_](
