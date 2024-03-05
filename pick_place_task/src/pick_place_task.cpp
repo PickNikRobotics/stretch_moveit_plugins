@@ -1,23 +1,8 @@
 #include <moveit/task_constructor/solvers.h>
 #include <moveit/task_constructor/stages.h>
 #include <pick_place_task/pick_place_task.hpp>
-#include <rosparam_shortcuts/rosparam_shortcuts.h>
 
 const rclcpp::Logger LOGGER = rclcpp::get_logger("pick_place_task");
-
-void PickPlaceTask::Parameters::loadParameters(
-    const rclcpp::Node::SharedPtr &node) {
-  size_t errors = 0;
-  //  errors += !rosparam_shortcuts::get(node, "arm_group_name",
-  //  arm_group_name);
-  errors += !rosparam_shortcuts::get(node, "hand_group_name", hand_group_name);
-  errors +=
-      !rosparam_shortcuts::get(node, "end_effector_name", end_effector_name);
-  errors += !rosparam_shortcuts::get(node, "hand_open_pose", hand_open_pose);
-  errors += !rosparam_shortcuts::get(node, "hand_close_pose", hand_close_pose);
-  errors += !rosparam_shortcuts::get(node, "hand_frame", hand_frame);
-  rosparam_shortcuts::shutdownIfError(errors);
-}
 
 PickPlaceTask::PickPlaceTask(const rclcpp::Node::SharedPtr &node,
                              const PickPlaceTask::Parameters &parameters) {
@@ -31,7 +16,7 @@ PickPlaceTask::PickPlaceTask(const rclcpp::Node::SharedPtr &node,
   task_->setProperty("hand", parameters.hand_group_name);
   task_->setProperty("ik_frame", parameters.hand_frame);
 
-  auto sampling_planner = std::make_shared<solvers::PipelinePlanner>(node);
+  auto sampling_planner = std::make_shared<solvers::PipelinePlanner>(node, "ompl", "RRTConnect");
   auto cartesian_planner = std::make_shared<solvers::CartesianPath>();
 
   /** Current State **/
