@@ -192,7 +192,7 @@ def generate_launch_description():
         )
         ld.add_action(fake_joint_driver_node)
 
-        for controller in ["stretch_controller", "joint_state_controller"]:
+        for controller in ["stretch_controller", "joint_state_broadcaster"]:
             ld.add_action(
                 ExecuteProcess(
                     cmd=["ros2 run controller_manager spawner --controller-manager-timeout 180 {}".format(controller)],
