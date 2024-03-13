@@ -19,7 +19,6 @@ find_package(moveit_core REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_task_constructor_core REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rosparam_shortcuts REQUIRED)
 
 # System dependencies are found with CMake's conventions
 find_package(eigen3_cmake_module REQUIRED)
@@ -34,7 +33,6 @@ add_library(${PROJECT_NAME} SHARED
 ament_target_dependencies(${PROJECT_NAME}
   Eigen3
   geometry_msgs
-  rosparam_shortcuts
 )
 # To disable warning moveit/task_constructor/task.h
 ament_target_dependencies(${PROJECT_NAME} SYSTEM
@@ -83,6 +81,5 @@ ament_export_dependencies(
   moveit_ros_planning_interface
   moveit_task_constructor_core
   rclcpp
-  rosparam_shortcuts
 )
 ament_package()
