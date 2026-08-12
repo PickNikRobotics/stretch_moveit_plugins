@@ -7,7 +7,7 @@
   <maintainer email="jafar@picknik.ai">Jafar Abdi</maintainer>
   <author email="jafar@picknik.ai">Jafar Abdi</author>
 
-  <license>BSD</license>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>eigen3_cmake_module</buildtool_depend>
